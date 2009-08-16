@@ -1,3 +1,8 @@
+/* Linux kernel module that disables the discrete graphics board for Lenovo
+ * U330. Other lenovo laptops could work, but I don't know.
+ *
+ * Copyright (c) 2009: Sylvain Joyeux <sylvain.joyeux@m4x.org>
+ */
 #include <acpi/acpi.h>
 
 MODULE_LICENSE("GPL");
@@ -15,11 +20,19 @@ static int __init kill_ati(void)
     // The arguments to ATPX
     union acpi_object atpx_arg_elements[2];
     struct acpi_object_list atpx_arg;
+    // For the return value of ATPX
+    struct acpi_buffer buffer = { ACPI_ALLOCATE_BUFFER, NULL };
 
     status = acpi_get_handle(root_handle, "\\_SB_.PCI0.OVGA.ATPX", &handle);
     if (ACPI_FAILURE(status))
     {
-        printk("ERROR: cannot get ACPI handle: %s\n", acpi_format_exception(status));
+        status = acpi_get_handle(root_handle, "\\_SB_.PCI0.OVGA.XTPX", &handle);
+        if (ACPI_FAILURE(status))
+        {
+            printk("lenovo_acpi: in discrete graphics mode\n");
+            return 0;
+        }
+        printk("lenovo_acpi: cannot get ACPI handle: %s\n", acpi_format_exception(status));
         return -ENOSYS;
     }
 
@@ -39,11 +52,10 @@ static int __init kill_ati(void)
     atpx_arg_elements[1].package.count = 3;
     atpx_arg_elements[1].package.elements = &package_elements[0];
     
-    struct acpi_buffer buffer = { ACPI_ALLOCATE_BUFFER, NULL };
     status = acpi_evaluate_object(handle, NULL, &atpx_arg, &buffer);
     if (ACPI_FAILURE(status))
     {
-        printk("ERROR: ATPX method call failed: %s\n", acpi_format_exception(status));
+        printk("lenovo_acpi: ATPX method call failed: %s\n", acpi_format_exception(status));
         return -ENOSYS;
     }
     kfree(buffer.pointer);

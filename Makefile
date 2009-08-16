@@ -1,5 +1,5 @@
 ifneq ($(KERNELRELEASE),)
-  obj-m := kill-ati.o
+  obj-m := lenovo_acpi.o
 else
   KERNELDIR ?= /lib/modules/$(shell uname -r)/build
   PWD := $(shell pwd)
