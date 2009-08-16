@@ -60,6 +60,7 @@ static int __init kill_ati(void)
     }
     kfree(buffer.pointer);
 
+    printk("lenovo_acpi: disabled the discrete graphics card\n");
     return 0;
 }
 
