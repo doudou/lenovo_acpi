@@ -29,11 +29,11 @@ static int __init kill_ati(void)
         status = acpi_get_handle(root_handle, "\\_SB_.PCI0.OVGA.XTPX", &handle);
         if (ACPI_FAILURE(status))
         {
-            printk("lenovo_acpi: in discrete graphics mode\n");
-            return 0;
+            printk("lenovo_acpi: cannot get ACPI handle: %s\n", acpi_format_exception(status));
+            return -ENOSYS;
         }
-        printk("lenovo_acpi: cannot get ACPI handle: %s\n", acpi_format_exception(status));
-        return -ENOSYS;
+        printk("lenovo_acpi: in discrete graphics mode\n");
+        return 0;
     }
 
     for (i = 0; i < 3; ++i)
