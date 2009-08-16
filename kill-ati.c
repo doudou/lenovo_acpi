@@ -1,56 +1,53 @@
-#include <linux/device.h>
-#include <linux/pci.h>
-#include <linux/pcieport_if.h>
-
-// directly the card
-static const int PCIE_VENDOR = 0x1002;
-static const int PCIE_ID     = 0x95c4;
-// The PCIe port
-//static const int PCIE_VENDOR = 0x8086;
-//static const int PCIE_ID     = 0x2a41;
+#include <acpi/acpi.h>
 
 MODULE_LICENSE("GPL");
 
+static acpi_handle root_handle;
+
 static int __init kill_ati(void)
 {
-    struct pci_dev* device = pci_get_device(PCIE_VENDOR, PCIE_ID, NULL);
-    pm_message_t msg = { PM_EVENT_SUSPEND };
-    int ret;
-    if (!device)
-    {
-        printk("device not found\n");
-	return -EINVAL;
-    }
-    if (!device->dev.bus)
-    {
-        printk("no driver for this device\n");
-	return -EINVAL;
-    }
-    if (!device->dev.bus->shutdown)
-    {
-        printk("no suspend method in driver %llx\n", device->dev.driver);
-	return -EINVAL;
-    }
-    //if (!device->dev.driver->bus->suspend)
-    //{
-    //    printk("no suspend method on bus %llx\n", device->dev.driver->bus);
-    //    return -EINVAL;
-    //}
+    int i;
+    acpi_status status;
+    // The device handle
+    acpi_handle handle;
+    // The package elements
+    union acpi_object package_elements[3];
+    // The arguments to ATPX
+    union acpi_object atpx_arg_elements[2];
+    struct acpi_object_list atpx_arg;
 
-    //device->dev.bus->shutdown(&device->dev);
-    ret = pci_set_power_state(device, PCI_D3cold);
-    ////if (!pci_set_power_state(device, PCI_D0))
-    ////    return -EINVAL;
-    ////if (!pci_set_power_state(device, PCI_D2))
-    ////    return -EINVAL;
-    if (ret == -EINVAL)
-        printk("invalid power state\n");
-    else if (ret == -EIO)
-        printk("unsupported power state\n");
-    else if (ret != 0)
-        printk("failed to change power state\n");
-    else
-        printk("power state is now %d\n", device->current_state);
+    status = acpi_get_handle(root_handle, "\\_SB_.PCI0.OVGA.ATPX", &handle);
+    if (ACPI_FAILURE(status))
+    {
+        printk("ERROR: cannot get ACPI handle: %s\n", acpi_format_exception(status));
+        return -ENOSYS;
+    }
+
+    for (i = 0; i < 3; ++i)
+    {
+        package_elements[i].type = ACPI_TYPE_INTEGER;
+        package_elements[i].integer.value = 0;
+    }
+
+    atpx_arg.count = 2;
+    atpx_arg.pointer = &atpx_arg_elements[0];
+
+    atpx_arg_elements[0].type = ACPI_TYPE_INTEGER;
+    atpx_arg_elements[0].integer.value = 2;
+
+    atpx_arg_elements[1].type = ACPI_TYPE_PACKAGE;
+    atpx_arg_elements[1].package.count = 3;
+    atpx_arg_elements[1].package.elements = &package_elements[0];
+    
+    struct acpi_buffer buffer = { ACPI_ALLOCATE_BUFFER, NULL };
+    status = acpi_evaluate_object(handle, NULL, &atpx_arg, &buffer);
+    if (ACPI_FAILURE(status))
+    {
+        printk("ERROR: ATPX method call failed: %s\n", acpi_format_exception(status));
+        return -ENOSYS;
+    }
+    kfree(buffer.pointer);
+
     return 0;
 }
 
