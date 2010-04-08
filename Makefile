@@ -10,5 +10,10 @@ default:
 clean:
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) $(EXTRA_FLAGS) clean
 
+install:
+	mkdir -p /lib/modules/$(shell uname -r)/misc
+	cp lenovo_acpi.ko /lib/modules/$(shell uname -r)/misc
+	depmod -a
+
 endif
 
